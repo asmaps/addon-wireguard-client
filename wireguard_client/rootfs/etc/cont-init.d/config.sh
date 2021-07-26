@@ -44,23 +44,22 @@ fi
 if ! bashio::config.has_value 'interface.address'; then
     bashio::exit.nok 'You need a address configured for the interface client'
 else
-    address=$(bashio::config 'interface.address')
-    [[ "${address}" == *"/"* ]] || address="${address}/24"   
-   echo "Address = ${address}" >> "${config}"
+   for address in $(bashio::config "interface.address"); do
+   	[[ "${address}" == *"/"* ]] || address="${address}/24" 
+        echo "Address = ${address}" >> "${config}"
+    done
 fi
 
 # Add all server DNS addresses to the configuration
-listDns=()
 if bashio::config.has_value "interface.dns"; then
+    listDns=()
     # Use allowed IP's defined by the user.
     for address in $(bashio::config "interface.dns"); do
         listDns+=("${address}")
     done
-else
-    bashio::exit.nok 'You need a dns configured'
+    dns=$(IFS=", "; echo "${listDns[*]}")
+    echo "DNS = ${dns}" >> "${config}"
 fi
-dns=$(IFS=", "; echo "${listDns[*]}")
-echo "DNS = ${dns}" >> "${config}"
 
 if [[ $(</proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
     bashio::log.warning
@@ -76,17 +75,13 @@ fi
 
 # Post Up & Down defaults
 # Check if custom post_up value
-if ! bashio::config.has_value 'interface.post_up'; then
-    bashio::exit.nok 'post_up command is required'
-else
+if bashio::config.has_value 'interface.post_up'; then
     post_up=$(bashio::config 'interface.post_up')
     echo "PostUp = ${post_up}" >> "${config}"
 fi
 
 # Check if custom post_down value
-if ! bashio::config.has_value 'interface.post_down'; then
-    bashio::exit.nok 'post_down command is required'
-else
+if bashio::config.has_value 'interface.post_down'; then
     post_down=$(bashio::config 'interface.post_down')
     echo "PostDown = ${post_down}" >> "${config}"
 fi
